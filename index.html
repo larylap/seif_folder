@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Сейф">
+<meta name="theme-color" content="#0f1117">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Сейф</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#181b24;--surface2:#222632;--line:#2c3140;
+  --text:#eceef3;--muted:#8a90a2;--gold:#e8b65c;--gold2:#f3cd85;--red:#e8645c;--green:#6cc58a;
+  --st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;overscroll-behavior:none}
+body{-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.hidden{display:none!important}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column}
+
+/* lock / setup */
+#auth{align-items:center;justify-content:center;padding:calc(var(--st) + 24px) 28px calc(var(--sb) + 24px);
+  background:radial-gradient(120% 70% at 50% 0%,#1c2030 0%,var(--bg) 60%)}
+.auth-box{width:100%;max-width:340px;text-align:center}
+.lock-ico{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;background:var(--surface);
+  display:grid;place-items:center;box-shadow:0 0 0 1px var(--line),0 12px 40px #0008}
+.auth-box h1{font-size:26px;margin:0 0 6px;font-weight:700;letter-spacing:-.3px}
+.auth-box p{margin:0 0 22px;color:var(--muted);font-size:14px}
+.field{width:100%;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--surface);
+  color:var(--text);font-size:17px;padding:0 16px;outline:none;margin-bottom:10px}
+.field:focus{border-color:var(--gold)}
+.btn{width:100%;height:52px;border-radius:14px;background:var(--gold);color:#1b1505;font-weight:650;font-size:17px}
+.btn:active{background:var(--gold2)}
+.btn.ghost{background:var(--surface2);color:var(--text)}
+.btn.danger{background:var(--red);color:#fff}
+.err{color:var(--red);font-size:14px;min-height:20px;margin-top:10px}
+.warn{margin-top:18px;font-size:13px;color:var(--muted);line-height:1.45}
+.banner{background:#2a2414;border:1px solid #5a4a22;color:#f2dba6;border-radius:14px;padding:12px 14px;
+  font-size:14px;text-align:left;margin-bottom:18px}
+
+/* main */
+#main{background:var(--bg)}
+header{padding:calc(var(--st) + 10px) 16px 10px;display:flex;align-items:center;gap:10px;
+  background:linear-gradient(var(--bg) 75%,#0f111700);position:relative;z-index:2}
+header h2{margin:0;font-size:28px;font-weight:750;letter-spacing:-.5px;flex:1}
+.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--surface);display:grid;place-items:center}
+.icon-btn:active{background:var(--surface2)}
+.tabs{display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:7px 14px;border-radius:20px;background:var(--surface);color:var(--muted);font-size:14px;font-weight:550}
+.tab.on{background:var(--gold);color:#1b1505}
+.search{margin:0 16px 10px;height:40px;border-radius:12px;border:0;background:var(--surface);color:var(--text);
+  padding:0 14px;font-size:16px;outline:none}
+#list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 16px calc(var(--sb) + 100px)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.tile{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tile .ext{font-size:13px;font-weight:750;letter-spacing:.5px;padding:6px 9px;border-radius:7px;background:var(--surface2);color:var(--gold)}
+.tile .nm{font-size:11px;color:var(--muted);padding:6px 6px 0;width:100%;overflow:hidden;text-overflow:ellipsis;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.tile .badge{position:absolute;right:5px;bottom:5px;font-size:11px;font-weight:600;background:#000a;padding:2px 6px;border-radius:6px}
+.tile.note{align-items:stretch;justify-content:flex-start;text-align:left;padding:10px;background:#1f1d17}
+.tile.note b{font-size:13px;color:var(--gold2);display:block;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.note span{font-size:11px;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;word-break:break-word}
+.empty{text-align:center;color:var(--muted);padding:70px 20px;font-size:15px}
+.empty b{display:block;color:var(--text);font-size:18px;margin-bottom:6px}
+.fab-row{position:fixed;left:0;right:0;bottom:calc(var(--sb) + 18px);display:flex;justify-content:center;gap:10px;z-index:3;pointer-events:none}
+.fab{pointer-events:auto;height:52px;padding:0 22px;border-radius:26px;background:var(--gold);color:#1b1505;font-weight:650;
+  display:flex;align-items:center;gap:8px;box-shadow:0 10px 30px #000a}
+.fab.sec{background:var(--surface2);color:var(--text)}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:#000;z-index:10;display:flex;flex-direction:column}
+.ov-head{padding:calc(var(--st) + 8px) 12px 8px;display:flex;align-items:center;gap:8px;background:#000c;position:relative;z-index:2}
+.ov-head .title{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.ov-body{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative}
+.ov-body img,.ov-body video{max-width:100%;max-height:100%;object-fit:contain}
+.ov-body iframe{width:100%;height:100%;border:0;background:#fff}
+.ov-body pre{white-space:pre-wrap;word-break:break-word;padding:16px;margin:0;align-self:stretch;width:100%;font-size:14px;-webkit-user-select:text;user-select:text}
+.ov-foot{padding:10px 16px calc(var(--sb) + 10px);display:flex;gap:10px;background:#000c}
+.ov-foot .btn{height:46px;font-size:15px}
+.file-card{text-align:center;color:var(--muted);padding:20px}
+.file-card .ext{display:inline-block;font-size:22px;font-weight:800;color:var(--gold);background:var(--surface);padding:18px 22px;border-radius:16px;margin-bottom:14px}
+.file-card div{color:var(--text);font-size:16px;margin-bottom:4px;word-break:break-word}
+.hint{font-size:12px;color:var(--muted);text-align:center;padding:0 16px 6px;background:#000c}
+
+#note{background:var(--bg)}
+#note .ov-head{background:var(--bg)}
+#noteTitle{margin:0 16px 8px;height:46px;border-radius:12px;border:0;background:var(--surface);color:var(--text);padding:0 14px;font-size:18px;font-weight:600;outline:none}
+#noteText{flex:1;margin:0 16px calc(var(--sb) + 16px);border-radius:12px;border:0;background:var(--surface);color:var(--text);
+  padding:14px;font:16px/1.5 -apple-system,system-ui,sans-serif;outline:none;resize:none}
+.txt-btn{color:var(--gold);font-weight:600;padding:8px 10px;font-size:16px}
+
+/* sheet / modal */
+.backdrop{position:fixed;inset:0;background:#0009;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;
+  padding:8px 16px calc(var(--sb) + 18px)}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 14px}
+.sheet h3{margin:0 0 12px;font-size:20px}
+.group{background:var(--surface2);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid var(--line);width:100%;text-align:left;font-size:16px}
+.row:last-child{border-bottom:0}
+.row small{color:var(--muted);font-size:13px}
+.row.red{color:var(--red)}
+.row select{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:15px}
+.switch{width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none;transition:.2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.switch.on{background:var(--green)}.switch.on::after{left:23px}
+.sec-label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 4px 6px}
+.modal-wrap{align-items:center;padding:20px}
+.modal{width:100%;max-width:340px;background:var(--surface);border-radius:18px;padding:20px}
+.modal h4{margin:0 0 8px;font-size:18px}
+.modal p{margin:0 0 14px;color:var(--muted);font-size:14px}
+.modal .btns{display:flex;gap:10px;margin-top:6px}
+.modal .btn{height:46px;font-size:16px}
+
+#busy{position:fixed;inset:0;background:#000b;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;text-align:center}
+.spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--gold);animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#busyText{font-size:14px;color:var(--muted);max-width:280px;word-break:break-word}
+#toast{position:fixed;left:50%;bottom:calc(var(--sb) + 90px);transform:translateX(-50%);background:var(--surface2);padding:10px 16px;border-radius:12px;
+  font-size:14px;z-index:50;box-shadow:0 8px 30px #000a;max-width:86vw;text-align:center;transition:opacity .25s;opacity:0;pointer-events:none}
+#toast.show{opacity:1}
+#cover{position:fixed;inset:0;background:var(--bg);z-index:100}
+</style>
+</head>
+<body>
+
+<!-- Экран входа / создания -->
+<section id="auth" class="screen">
+  <div class="auth-box">
+    <div class="lock-ico"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#e8b65c" stroke-width="2" stroke-linecap="round"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3" fill="#e8b65c"/></svg></div>
+    <div id="installBanner" class="banner hidden">Сначала установите приложение: в Safari нажмите <b>«Поделиться»</b> → <b>«На экран „Домой“»</b>. Создавайте сейф уже в установленном приложении — данные Safari и приложения хранятся раздельно.</div>
+    <h1 id="authTitle">Сейф</h1>
+    <p id="authSub">Введите пароль</p>
+    <form id="authForm" autocomplete="off">
+      <input id="pw1" class="field" type="password" placeholder="Пароль" autocomplete="current-password" enterkeyhint="go">
+      <input id="pw2" class="field hidden" type="password" placeholder="Повторите пароль" autocomplete="new-password" enterkeyhint="go">
+      <button class="btn" id="authBtn" type="submit">Открыть</button>
+    </form>
+    <div class="err" id="authErr"></div>
+    <div class="warn hidden" id="setupWarn">Пароль нигде не хранится и не восстанавливается. Если вы его забудете, открыть сейф будет невозможно — ни вам, ни кому-либо ещё.</div>
+  </div>
+</section>
+
+<!-- Главный экран -->
+<section id="main" class="screen hidden">
+  <header>
+    <h2>Сейф</h2>
+    <button class="icon-btn" id="btnSettings" aria-label="Настройки"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    <button class="icon-btn" id="btnLock" aria-label="Заблокировать"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8b65c" stroke-width="2" stroke-linecap="round"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></button>
+  </header>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-f="all">Все</button>
+    <button class="tab" data-f="image">Фото</button>
+    <button class="tab" data-f="video">Видео</button>
+    <button class="tab" data-f="file">Файлы</button>
+    <button class="tab" data-f="note">Заметки</button>
+  </div>
+  <input class="search" id="search" type="search" placeholder="Поиск по названию">
+  <div id="list"></div>
+  <div class="fab-row">
+    <button class="fab sec" id="btnNote"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Заметка</button>
+    <button class="fab" id="btnAdd"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Добавить</button>
+  </div>
+  <input type="file" id="filePick" multiple class="hidden">
+  <input type="file" id="backupPick" class="hidden">
+</section>
+
+<!-- Просмотр -->
+<section id="viewer" class="overlay hidden">
+  <div class="ov-head">
+    <button class="icon-btn" id="vClose" aria-label="Закрыть"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="title" id="vTitle"></div>
+    <button class="icon-btn" id="vDel" aria-label="Удалить"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#e8645c" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+  </div>
+  <div class="ov-body" id="vBody"></div>
+  <div class="hint" id="vHint"></div>
+  <div class="ov-foot"><button class="btn ghost" id="vShare">Поделиться / сохранить</button></div>
+</section>
+
+<!-- Заметка -->
+<section id="note" class="overlay hidden">
+  <div class="ov-head">
+    <button class="txt-btn" id="nCancel">Отмена</button>
+    <div class="title">Заметка</div>
+    <button class="txt-btn" id="nSave">Сохранить</button>
+  </div>
+  <input id="noteTitle" placeholder="Заголовок">
+  <textarea id="noteText" placeholder="Текст заметки…"></textarea>
+</section>
+
+<!-- Настройки -->
+<div id="settings" class="backdrop hidden">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Настройки</h3>
+    <div class="sec-label">Автоблокировка</div>
+    <div class="group">
+      <button class="row" id="sHide"><span>Блокировать при сворачивании</span><span class="switch" id="sHideSw"></span></button>
+      <div class="row"><span>Без действий</span>
+        <select id="sIdle"><option value="1">1 мин</option><option value="3">3 мин</option><option value="5">5 мин</option><option value="15">15 мин</option><option value="0">никогда</option></select>
+      </div>
+    </div>
+    <div class="sec-label">Безопасность</div>
+    <div class="group">
+      <button class="row" id="sPass"><span>Сменить пароль</span><small>›</small></button>
+    </div>
+    <div class="sec-label">Резервная копия</div>
+    <div class="group">
+      <button class="row" id="sExport"><span>Сохранить копию в файл</span><small>зашифрована</small></button>
+      <button class="row" id="sImport"><span>Восстановить из файла</span><small>›</small></button>
+    </div>
+    <div class="sec-label">Хранилище</div>
+    <div class="group">
+      <div class="row"><span>В сейфе</span><small id="sStat">—</small></div>
+      <div class="row"><span>Свободно для приложения</span><small id="sQuota">—</small></div>
+    </div>
+    <div class="group">
+      <button class="row red" id="sWipe"><span>Удалить сейф полностью</span></button>
+    </div>
+    <button class="btn ghost" id="sClose">Готово</button>
+  </div>
+</div>
+
+<div id="modal" class="backdrop modal-wrap hidden"></div>
+<div id="busy" class="hidden"><div class="spin"></div><div id="busyText"></div></div>
+<div id="toast"></div>
+<div id="cover" class="hidden"></div>
+
+<script>
+'use strict';
+/* ============ утилиты ============ */
+const $ = s => document.querySelector(s);
+const te = new TextEncoder(), td = new TextDecoder();
+const ITER = 600000;                       // PBKDF2-SHA256
+const MAX_SAFE = 700 * 1024 * 1024;        // предупреждение о больших файлах
+const rnd = n => crypto.getRandomValues(new Uint8Array(n));
+const uid = () => Array.from(rnd(12), b => b.toString(16).padStart(2, '0')).join('');
+const b64 = buf => { const a = new Uint8Array(buf); let s = ''; for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const u32 = n => { const a = new Uint8Array(4); new DataView(a.buffer).setUint32(0, n); return a; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtSize = n => n < 1024 ? n + ' Б' : n < 1048576 ? (n/1024).toFixed(0) + ' КБ' : n < 1073741824 ? (n/1048576).toFixed(1) + ' МБ' : (n/1073741824).toFixed(2) + ' ГБ';
+const fmtDur = s => { s = Math.round(s || 0); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); };
+const extOf = n => { const m = /\.([a-z0-9]{1,5})$/i.exec(n || ''); return m ? m[1].toUpperCase() : 'ФАЙЛ'; };
+const isStandalone = () => window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+function busy(on, text=''){ $('#busy').classList.toggle('hidden', !on); $('#busyText').textContent = text; }
+
+/* ============ IndexedDB ============ */
+let dbp;
+function db(){
+  return dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('safe-vault', 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('cfg'); d.createObjectStore('meta', {keyPath:'id'}); d.createObjectStore('blobs', {keyPath:'id'}); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+}
+async function req(store, mode, fn){
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(store, mode); let out;
+    const r = fn(t.objectStore(store)); if (r) r.onsuccess = () => out = r.result;
+    t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('abort'));
+  });
+}
+const cfgGet = k => req('cfg', 'readonly', s => s.get(k));
+const cfgSet = (k, v) => req('cfg', 'readwrite', s => s.put(v, k));
+async function putItem(m, b){
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(['meta','blobs'], 'readwrite');
+    t.objectStore('meta').put(m); if (b) t.objectStore('blobs').put(b);
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Недостаточно места'));
+  });
+}
+async function delItem(id){
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(['meta','blobs'], 'readwrite');
+    t.objectStore('meta').delete(id); t.objectStore('blobs').delete(id);
+    t.oncomplete = res; t.onerror = () => rej(t.error);
+  });
+}
+async function wipeAll(){
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(['cfg','meta','blobs'], 'readwrite');
+    ['cfg','meta','blobs'].forEach(s => t.objectStore(s).clear());
+    t.oncomplete = res; t.onerror = () => rej(t.error);
+  });
+}
+
+/* ============ криптография ============
+   Пароль → PBKDF2 (600 000 итераций) → ключ-обёртка.
+   Случайный мастер-ключ AES-256 хранится только в зашифрованном виде.
+   Каждый файл и его описание (имя, тип, миниатюра) шифруются AES-GCM. */
+async function kek(pw, salt, iter){
+  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:iter, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function encWith(key, data){ const iv = rnd(12); const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, data); return {iv, ct}; }
+const decWith = (key, iv, ct) => crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
+async function unwrapRaw(pw, h){ const k = await kek(pw, h.salt, h.iter); return decWith(k, h.wiv, h.wkey); }
+async function wrapRaw(pw, raw){ const salt = rnd(16); const k = await kek(pw, salt, ITER); const {iv, ct} = await encWith(k, raw); return {salt, iter:ITER, wiv:iv, wkey:ct}; }
+const importMaster = raw => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt','decrypt']);
+
+/* ============ состояние ============ */
+let KEY = null, items = [], filter = 'all', query = '';
+let prefs = {lockOnHide:true, idle:3};
+let pickerOpen = false, lastAct = Date.now();
+let view = {list:[], idx:0, url:null};
+let editingNote = null;
+
+/* ============ записи ============ */
+function kindOf(type, name){
+  type = type || '';
+  if (type.startsWith('image/') || /\.(heic|heif|jpe?g|png|gif|webp)$/i.test(name)) return 'image';
+  if (type.startsWith('video/') || /\.(mov|mp4|m4v)$/i.test(name)) return 'video';
+  if (type.startsWith('audio/')) return 'audio';
+  if (type === 'application/pdf' || /\.pdf$/i.test(name)) return 'pdf';
+  if (type.startsWith('text/') || /\.(txt|md|csv|json)$/i.test(name)) return 'text';
+  return 'file';
+}
+async function saveRecord(meta, data, id){
+  id = id || uid();
+  const m = Object.assign({}, meta); delete m.id;
+  const me = await encWith(KEY, te.encode(JSON.stringify(m)));
+  const be = data ? await encWith(KEY, data) : null;
+  await putItem({id, iv:me.iv, ct:me.ct}, be ? {id, iv:be.iv, ct:be.ct} : null);
+  return Object.assign(m, {id});
+}
+async function loadItems(){
+  const recs = await req('meta', 'readonly', s => s.getAll());
+  const out = [];
+  for (const r of recs){ try { const o = JSON.parse(td.decode(await decWith(KEY, r.iv, r.ct))); o.id = r.id; out.push(o); } catch(e){} }
+  out.sort((a, b) => b.added - a.added);
+  items = out;
+}
+async function readData(id){ const r = await req('blobs', 'readonly', s => s.get(id)); return decWith(KEY, r.iv, r.ct); }
+
+/* ============ миниатюры ============ */
+function drawThumb(src, w, h){
+  const S = 260, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'), sc = Math.max(S/w, S/h), dw = w*sc, dh = h*sc;
+  g.drawImage(src, (S-dw)/2, (S-dh)/2, dw, dh);
+  return c.toDataURL('image/jpeg', 0.72);
+}
+function thumbImage(file){
+  return new Promise(res => {
+    const u = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { let t = null; try { t = drawThumb(img, img.naturalWidth, img.naturalHeight); } catch(e){} URL.revokeObjectURL(u); res(t); };
+    img.onerror = () => { URL.revokeObjectURL(u); res(null); };
+    img.src = u;
+  });
+}
+function thumbVideo(file){
+  return new Promise(res => {
+    const u = URL.createObjectURL(file), v = document.createElement('video'); let done = false, dur = null;
+    const fin = t => { if (done) return; done = true; URL.revokeObjectURL(u); v.removeAttribute('src'); try{ v.load(); }catch(e){} res({thumb:t, dur}); };
+    v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+    v.onloadedmetadata = () => { dur = v.duration; try { v.currentTime = Math.min(1, (v.duration || 3) / 3); } catch(e){ fin(null); } };
+    v.onseeked = () => { try { fin(drawThumb(v, v.videoWidth, v.videoHeight)); } catch(e){ fin(null); } };
+    v.onerror = () => fin(null);
+    setTimeout(() => fin(null), 7000);
+    v.src = u;
+  });
+}
+
+/* ============ вход ============ */
+async function initAuth(){
+  const hdr = await cfgGet('hdr');
+  const setup = !hdr;
+  $('#pw2').classList.toggle('hidden', !setup);
+  $('#setupWarn').classList.toggle('hidden', !setup);
+  $('#authTitle').textContent = setup ? 'Новый сейф' : 'Сейф';
+  $('#authSub').textContent = setup ? 'Придумайте пароль (не короче 6 символов)' : 'Введите пароль';
+  $('#authBtn').textContent = setup ? 'Создать сейф' : 'Открыть';
+  $('#pw1').setAttribute('autocomplete', setup ? 'new-password' : 'current-password');
+  $('#installBanner').classList.toggle('hidden', !(isIOS && !isStandalone() && setup));
+  $('#authErr').textContent = '';
+  $('#pw1').value = ''; $('#pw2').value = '';
+  showScreen('auth');
+  try { const p = await prefsLoad(); prefs = p; } catch(e){}
+}
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const pw = $('#pw1').value, err = $('#authErr');
+  err.textContent = '';
+  const hdr = await cfgGet('hdr');
+  if (!hdr){
+    if (pw.length < 6) return err.textContent = 'Минимум 6 символов';
+    if (pw !== $('#pw2').value) return err.textContent = 'Пароли не совпадают';
+    busy(true, 'Создаю сейф…');
+    try {
+      const raw = rnd(32);
+      await cfgSet('hdr', await wrapRaw(pw, raw));
+      KEY = await importMaster(raw); raw.fill(0);
+      try { await navigator.storage?.persist?.(); } catch(e){}
+      busy(false); await openVault();
+      toast('Сейф создан');
+    } catch(ex){ busy(false); err.textContent = 'Ошибка: ' + ex.message; }
+    return;
+  }
+  const fails = (await cfgGet('fails')) || {n:0, until:0};
+  if (fails.until > Date.now()) return err.textContent = `Слишком много попыток. Подождите ${Math.ceil((fails.until - Date.now())/1000)} с`;
+  if (!pw) return;
+  busy(true, 'Проверяю…');
+  try {
+    const raw = await unwrapRaw(pw, hdr);
+    KEY = await importMaster(raw); new Uint8Array(raw).fill(0);
+    await cfgSet('fails', {n:0, until:0});
+    busy(false); await openVault();
+  } catch(ex){
+    busy(false);
+    fails.n++; if (fails.n >= 5) fails.until = Date.now() + Math.min(3600, 30 * 2 ** (fails.n - 5)) * 1000;
+    await cfgSet('fails', fails);
+    err.textContent = fails.n >= 5 ? `Неверный пароль. Следующая попытка через ${Math.round((fails.until - Date.now())/1000)} с` : 'Неверный пароль';
+    $('#pw1').value = '';
+  }
+});
+async function openVault(){
+  busy(true, 'Открываю…');
+  await loadItems(); busy(false);
+  showScreen('main'); render(); lastAct = Date.now();
+}
+function lock(){
+  KEY = null; items = [];
+  closeViewer(); $('#note').classList.add('hidden'); $('#settings').classList.add('hidden'); $('#modal').classList.add('hidden');
+  $('#list').innerHTML = ''; $('#search').value = ''; query = '';
+  initAuth();
+}
+function showScreen(n){ $('#auth').classList.toggle('hidden', n !== 'auth'); $('#main').classList.toggle('hidden', n !== 'main'); }
+
+/* ============ список ============ */
+function visible(){
+  return items.filter(it => {
+    if (filter === 'image' && it.kind !== 'image') return false;
+    if (filter === 'video' && it.kind !== 'video') return false;
+    if (filter === 'note' && it.kind !== 'note') return false;
+    if (filter === 'file' && ['image','video','note'].includes(it.kind)) return false;
+    if (query && !(it.name || '').toLowerCase().includes(query)) return false;
+    return true;
+  });
+}
+function render(){
+  const list = visible(), box = $('#list');
+  if (!items.length){ box.innerHTML = '<div class="empty"><b>Сейф пуст</b>Нажмите «Добавить», чтобы спрятать фото, видео или файлы, или создайте заметку.</div>'; return; }
+  if (!list.length){ box.innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
+  box.innerHTML = '<div class="grid">' + list.map(it => {
+    if (it.kind === 'note') return `<button class="tile note" data-id="${it.id}"><b>${esc(it.name || 'Без названия')}</b><span>${esc(it.snippet || '')}</span></button>`;
+    if (it.thumb) return `<button class="tile" data-id="${it.id}"><img src="${it.thumb}" alt="">${it.kind === 'video' ? `<span class="badge">▶ ${fmtDur(it.dur)}</span>` : ''}</button>`;
+    return `<button class="tile" data-id="${it.id}"><span class="ext">${esc(it.kind === 'video' ? 'ВИДЕО' : extOf(it.name))}</span><span class="nm">${esc(it.name)}</span></button>`;
+  }).join('') + '</div>';
+}
+$('#list').addEventListener('click', e => {
+  const t = e.target.closest('.tile'); if (!t) return;
+  const it = items.find(x => x.id === t.dataset.id); if (!it) return;
+  if (it.kind === 'note') openNote(it); else openViewer(it);
+});
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  filter = b.dataset.f; render();
+});
+$('#search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(); });
+$('#btnLock').onclick = lock;
+
+/* ============ добавление ============ */
+$('#btnAdd').onclick = () => { pickerOpen = true; $('#filePick').value = ''; $('#filePick').click(); };
+$('#filePick').addEventListener('change', async e => {
+  pickerOpen = false;
+  const files = Array.from(e.target.files || []); if (!files.length) return;
+  const errs = []; let ok = 0;
+  for (let i = 0; i < files.length; i++){
+    const f = files[i];
+    busy(true, `Шифрую ${i+1} из ${files.length}\n${f.name}`);
+    try {
+      if (f.size > MAX_SAFE) throw new Error('слишком большой');
+      const kind = kindOf(f.type, f.name);
+      let thumb = null, dur = null;
+      if (kind === 'image') thumb = await thumbImage(f);
+      else if (kind === 'video'){ const r = await thumbVideo(f); thumb = r.thumb; dur = r.dur; }
+      const data = await f.arrayBuffer();
+      const m = await saveRecord({name:f.name || 'файл', type:f.type || 'application/octet-stream', size:f.size, added:Date.now() + i, kind, thumb, dur}, data);
+      items.unshift(m); ok++;
+    } catch(ex){ errs.push(f.name + (ex.message ? ' (' + ex.message + ')' : '')); }
+  }
+  busy(false); items.sort((a, b) => b.added - a.added); render();
+  if (errs.length) await dialog({title:'Не всё добавлено', text:'Не удалось: ' + errs.join(', ') + '. Если файл очень большой — телефону может не хватить памяти для шифрования.'});
+  else toast(ok === 1 ? 'Добавлено' : `Добавлено: ${ok}`);
+  if (ok && !prefs.hintShown){
+    prefs.hintShown = true; prefsSave();
+    dialog({title:'Удалите оригиналы', text:'Файлы скопированы в сейф. Чтобы их не было видно в «Фото» или «Файлах», удалите оригиналы вручную (и из «Недавно удалённых»).'});
+  }
+});
+window.addEventListener('focus', () => setTimeout(() => { pickerOpen = false; }, 1500));
+
+/* ============ просмотр ============ */
+function openViewer(it){
+  view.list = visible().filter(x => x.kind !== 'note');
+  view.idx = Math.max(0, view.list.findIndex(x => x.id === it.id));
+  $('#viewer').classList.remove('hidden');
+  showItem();
+}
+async function showItem(){
+  const it = view.list[view.idx]; if (!it) return closeViewer();
+  revokeView();
+  $('#vTitle').textContent = it.name;
+  const body = $('#vBody'); body.innerHTML = '<div class="spin"></div>'; $('#vHint').textContent = '';
+  try {
+    const data = await readData(it.id);
+    if (view.list[view.idx] !== it) return;
+    const blob = new Blob([data], {type:it.type}); view.url = URL.createObjectURL(blob);
+    if (it.kind === 'image') body.innerHTML = `<img src="${view.url}" alt="">`;
+    else if (it.kind === 'video') body.innerHTML = `<video src="${view.url}" controls playsinline autoplay></video>`;
+    else if (it.kind === 'audio') body.innerHTML = `<audio src="${view.url}" controls autoplay></audio>`;
+    else if (it.kind === 'pdf'){ body.innerHTML = `<iframe src="${view.url}"></iframe>`; $('#vHint').textContent = 'Если PDF показан не полностью — откройте через «Поделиться».'; }
+    else if (it.kind === 'text') body.innerHTML = `<pre>${esc(td.decode(data))}</pre>`;
+    else body.innerHTML = `<div class="file-card"><span class="ext">${esc(extOf(it.name))}</span><div>${esc(it.name)}</div>${fmtSize(it.size)}<br><br>Этот тип нельзя показать внутри.<br>Откройте через «Поделиться».</div>`;
+    if (view.list.length > 1 && it.kind === 'image') $('#vHint').textContent = `${view.idx + 1} / ${view.list.length} · листайте влево-вправо`;
+  } catch(ex){ body.innerHTML = '<div class="file-card">Не удалось расшифровать файл</div>'; }
+}
+function revokeView(){ if (view.url){ URL.revokeObjectURL(view.url); view.url = null; } }
+function closeViewer(){ revokeView(); $('#vBody').innerHTML = ''; $('#viewer').classList.add('hidden'); }
+$('#vClose').onclick = closeViewer;
+(() => { // свайпы
+  let x0 = null, y0 = 0;
+  const b = $('#vBody');
+  b.addEventListener('touchstart', e => { if (e.touches.length === 1){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; } }, {passive:true});
+  b.addEventListener('touchend', e => {
+    if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+    const it = view.list[view.idx]; if (!it || it.kind !== 'image') return;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5){
+      const n = view.idx + (dx < 0 ? 1 : -1); if (n >= 0 && n < view.list.length){ view.idx = n; showItem(); }
+    } else if (dy > 120 && Math.abs(dy) > Math.abs(dx) * 2) closeViewer();
+  }, {passive:true});
+})();
+$('#vDel').onclick = async () => {
+  const it = view.list[view.idx]; if (!it) return;
+  if (!await dialog({title:'Удалить из сейфа?', text:`«${it.name}» будет удалён без возможности восстановления.`, ok:'Удалить', danger:true, cancel:'Отмена'})) return;
+  await delItem(it.id);
+  items = items.filter(x => x.id !== it.id); view.list.splice(view.idx, 1);
+  render();
+  if (!view.list.length) closeViewer(); else { view.idx = Math.min(view.idx, view.list.length - 1); showItem(); }
+  toast('Удалено');
+};
+$('#vShare').onclick = async () => {
+  const it = view.list[view.idx]; if (!it) return;
+  try { const data = await readData(it.id); await shareFile(new File([data], it.name, {type:it.type})); } catch(ex){ toast('Не удалось'); }
+};
+async function shareFile(file){
+  if (navigator.canShare && navigator.canShare({files:[file]})){
+    pickerOpen = true;
+    try { await navigator.share({files:[file]}); } catch(e){}
+    pickerOpen = false;
+  } else {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  }
+}
+
+/* ============ заметки ============ */
+$('#btnNote').onclick = () => openNote(null);
+async function openNote(it){
+  editingNote = it;
+  $('#noteTitle').value = it ? it.name : '';
+  $('#noteText').value = '';
+  $('#note').classList.remove('hidden');
+  if (it){ try { $('#noteText').value = td.decode(await readData(it.id)); } catch(e){ toast('Не удалось открыть'); } }
+  else setTimeout(() => $('#noteTitle').focus(), 50);
+}
+$('#nCancel').onclick = () => { $('#note').classList.add('hidden'); editingNote = null; };
+$('#nSave').onclick = () => saveNote();
+async function saveNote(){
+  const text = $('#noteText').value, title = $('#noteTitle').value.trim() || text.split('\n')[0].slice(0, 40) || 'Без названия';
+  if (!text.trim() && !editingNote){ $('#note').classList.add('hidden'); return; }
+  const data = te.encode(text);
+  const meta = {name:title, type:'text/plain', size:data.byteLength, added: editingNote ? editingNote.added : Date.now(), edited:Date.now(), kind:'note', snippet:text.slice(0, 160)};
+  try {
+    const m = await saveRecord(meta, data, editingNote && editingNote.id);
+    items = items.filter(x => x.id !== m.id); items.push(m); items.sort((a, b) => b.added - a.added);
+    render(); $('#note').classList.add('hidden'); editingNote = null; toast('Сохранено');
+  } catch(ex){ toast('Ошибка сохранения'); }
+}
+
+/* ============ диалоги ============ */
+function dialog({title, text = '', fields = [], ok = 'OK', cancel = null, danger = false}){
+  return new Promise(res => {
+    const m = $('#modal');
+    m.innerHTML = `<div class="modal"><h4>${esc(title)}</h4>${text ? `<p>${esc(text)}</p>` : ''}
+      ${fields.map((f, i) => `<input class="field" data-i="${i}" type="${f.type || 'password'}" placeholder="${esc(f.placeholder || '')}">`).join('')}
+      <div class="btns">${cancel ? `<button class="btn ghost" data-a="c">${esc(cancel)}</button>` : ''}<button class="btn ${danger ? 'danger' : ''}" data-a="o">${esc(ok)}</button></div></div>`;
+    m.classList.remove('hidden');
+    const first = m.querySelector('input'); if (first) setTimeout(() => first.focus(), 60);
+    const done = v => { m.classList.add('hidden'); m.innerHTML = ''; res(v); };
+    m.querySelector('[data-a="o"]').onclick = () => done(fields.length ? Array.from(m.querySelectorAll('input')).map(x => x.value) : true);
+    const c = m.querySelector('[data-a="c"]'); if (c) c.onclick = () => done(null);
+    m.querySelectorAll('input').forEach(x => x.addEventListener('keydown', e => { if (e.key === 'Enter') m.querySelector('[data-a="o"]').click(); }));
+  });
+}
+
+/* ============ настройки ============ */
+async function prefsLoad(){ return Object.assign({lockOnHide:true, idle:3}, (await cfgGet('prefs')) || {}); }
+async function prefsSave(){ await cfgSet('prefs', prefs); }
+$('#btnSettings').onclick = async () => {
+  $('#sHideSw').classList.toggle('on', prefs.lockOnHide);
+  $('#sIdle').value = String(prefs.idle);
+  const total = items.reduce((s, x) => s + (x.size || 0), 0);
+  $('#sStat').textContent = `${items.length} шт · ${fmtSize(total)}`;
+  try { const e = await navigator.storage.estimate(); $('#sQuota').textContent = fmtSize(Math.max(0, e.quota - e.usage)); } catch(e){ $('#sQuota').textContent = '—'; }
+  $('#settings').classList.remove('hidden');
+};
+$('#sClose').onclick = () => $('#settings').classList.add('hidden');
+$('#settings').addEventListener('click', e => { if (e.target.id === 'settings') $('#settings').classList.add('hidden'); });
+$('#sHide').onclick = () => { prefs.lockOnHide = !prefs.lockOnHide; $('#sHideSw').classList.toggle('on', prefs.lockOnHide); prefsSave(); };
+$('#sIdle').onchange = e => { prefs.idle = +e.target.value; prefsSave(); };
+
+$('#sPass').onclick = async () => {
+  const v = await dialog({title:'Смена пароля', fields:[{placeholder:'Текущий пароль'},{placeholder:'Новый пароль'},{placeholder:'Повторите новый'}], ok:'Сменить', cancel:'Отмена'});
+  if (!v) return;
+  if (v[1].length < 6) return dialog({title:'Слишком короткий', text:'Новый пароль — минимум 6 символов.'});
+  if (v[1] !== v[2]) return dialog({title:'Не совпадает', text:'Новые пароли не совпадают.'});
+  busy(true, 'Меняю пароль…');
+  try {
+    const raw = await unwrapRaw(v[0], await cfgGet('hdr'));
+    await cfgSet('hdr', await wrapRaw(v[1], raw)); new Uint8Array(raw).fill(0);
+    busy(false); toast('Пароль изменён');
+  } catch(e){ busy(false); dialog({title:'Неверный пароль', text:'Текущий пароль введён неверно.'}); }
+};
+
+$('#sExport').onclick = async () => {
+  busy(true, 'Собираю копию…');
+  try {
+    const hdr = await cfgGet('hdr');
+    const metas = await req('meta', 'readonly', s => s.getAll());
+    const head = te.encode(JSON.stringify({v:1, salt:b64(hdr.salt), iter:hdr.iter, wiv:b64(hdr.wiv), wkey:b64(hdr.wkey), count:metas.length}));
+    const parts = [te.encode('SAFE1'), u32(head.length), head];
+    for (const m of metas){
+      const b = await req('blobs', 'readonly', s => s.get(m.id));
+      if (!b) continue;
+      const j = te.encode(JSON.stringify({id:m.id, miv:b64(m.iv), mct:b64(m.ct), biv:b64(b.iv)}));
+      parts.push(u32(j.length), j, u32(b.ct.byteLength), new Uint8Array(b.ct));
+    }
+    const d = new Date(), name = `seif-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.safe`;
+    const file = new File(parts, name, {type:'application/octet-stream'});
+    busy(false);
+    await dialog({title:'Копия готова', text:`${fmtSize(file.size)}. Она зашифрована тем же паролем. Сохраните её в «Файлы» или на компьютер — без пароля её никто не откроет.`, ok:'Сохранить'});
+    await shareFile(file);
+  } catch(ex){ busy(false); dialog({title:'Ошибка', text:'Не удалось создать копию: ' + ex.message}); }
+};
+$('#sImport').onclick = () => { pickerOpen = true; $('#backupPick').value = ''; $('#backupPick').click(); };
+$('#backupPick').addEventListener('change', async e => {
+  pickerOpen = false;
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  busy(true, 'Читаю файл…');
+  try {
+    const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf), dv = new DataView(buf);
+    if (td.decode(u8.subarray(0, 5)) !== 'SAFE1') throw new Error('Это не файл копии сейфа');
+    let p = 5; const hl = dv.getUint32(p); p += 4;
+    const h = JSON.parse(td.decode(u8.subarray(p, p + hl))); p += hl;
+    busy(false);
+    const v = await dialog({title:'Пароль копии', text:'Введите пароль, который был у сейфа в момент создания копии.', fields:[{placeholder:'Пароль'}], ok:'Восстановить', cancel:'Отмена'});
+    if (!v) return;
+    busy(true, 'Проверяю пароль…');
+    let bk;
+    try { const raw = await unwrapRaw(v[0], {salt:unb64(h.salt), iter:h.iter, wiv:unb64(h.wiv), wkey:unb64(h.wkey)}); bk = await importMaster(raw); }
+    catch(e){ busy(false); return dialog({title:'Неверный пароль', text:'Не удалось открыть копию этим паролем.'}); }
+    const have = new Set(items.map(x => x.id)); let added = 0, skipped = 0;
+    for (let i = 0; i < h.count; i++){
+      busy(true, `Восстанавливаю ${i+1} из ${h.count}`);
+      const jl = dv.getUint32(p); p += 4; const j = JSON.parse(td.decode(u8.subarray(p, p + jl))); p += jl;
+      const bl = dv.getUint32(p); p += 4; const ct = buf.slice(p, p + bl); p += bl;
+      if (have.has(j.id)){ skipped++; continue; }
+      const meta = JSON.parse(td.decode(await decWith(bk, unb64(j.miv), unb64(j.mct))));
+      const data = await decWith(bk, unb64(j.biv), ct);
+      await saveRecord(meta, data, j.id); added++;
+    }
+    await loadItems(); render(); busy(false);
+    $('#settings').classList.add('hidden');
+    dialog({title:'Готово', text:`Восстановлено: ${added}` + (skipped ? `, уже были в сейфе: ${skipped}` : '')});
+  } catch(ex){ busy(false); dialog({title:'Ошибка', text:ex.message}); }
+});
+
+$('#sWipe').onclick = async () => {
+  const v = await dialog({title:'Удалить всё?', text:'Все файлы и заметки будут стёрты навсегда. Введите пароль для подтверждения.', fields:[{placeholder:'Пароль'}], ok:'Стереть', cancel:'Отмена', danger:true});
+  if (!v) return;
+  try { await unwrapRaw(v[0], await cfgGet('hdr')); } catch(e){ return dialog({title:'Неверный пароль', text:'Сейф не удалён.'}); }
+  busy(true, 'Стираю…'); await wipeAll(); busy(false); lock(); toast('Сейф удалён');
+};
+
+/* ============ автоблокировка ============ */
+['touchstart','keydown','scroll','mousedown'].forEach(ev => document.addEventListener(ev, () => lastAct = Date.now(), {passive:true, capture:true}));
+setInterval(() => {
+  if (!KEY || !prefs.idle || pickerOpen) return;
+  const v = $('#vBody video, #vBody audio'); if (v && !v.paused) { lastAct = Date.now(); return; }
+  if (!$('#note').classList.contains('hidden')) return; // не теряем несохранённую заметку
+  if (Date.now() - lastAct > prefs.idle * 60000) lock();
+}, 5000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){
+    if (KEY && prefs.lockOnHide && !pickerOpen){
+      $('#cover').classList.remove('hidden');
+      const pending = (!$('#note').classList.contains('hidden') && $('#noteText').value.trim()) ? saveNote() : Promise.resolve();
+      pending.finally(lock);
+    }
+  } else $('#cover').classList.add('hidden');
+});
+window.addEventListener('pagehide', () => { if (KEY && prefs.lockOnHide && !pickerOpen) lock(); });
+
+/* ============ старт ============ */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+initAuth();
+</script>
+</body>
+</html>
